@@ -1,33 +1,36 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: fleet-myapp
+  name: myapp-prod
   namespace: argocd
+
 spec:
   generators:
-  - list:
-      elements:
-      - name: hub
-        server: https://kubernetes.default.svc
-        env: prod
-      - name: spoke
-        server: https://4449BC09C3F558AA193301BB5C9E4AE5.gr7.us-east-1.eks.amazonaws.com
-        env: canary
+  - clusters:
+      selector:
+        matchLabels:
+          env: prod
+
   template:
     metadata:
-      name: '{{name}}-myapp'
+      name: '{{metadata.labels.cluster}}-myapp'
+
     spec:
       project: default
+
       source:
         repoURL: https://github.com/gorin-lab/fleet
         targetRevision: main
-        path: apps/myapp/overlays/{{env}}
+        path: apps/myapp/overlays/{{metadata.labels.env}}
+
       destination:
         server: '{{server}}'
         namespace: myapp
+
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
+        - CreateNamespace=true
+
