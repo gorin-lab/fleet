@@ -7,11 +7,11 @@ spec:
   generators:
   - list:
       elements:
-      - name: cluster-a
+      - name: hub
         server: https://kubernetes.default.svc
         env: prod
-      - name: cluster-b
-        server: https://REPLACE_ME.eks.amazonaws.com
+      - name: spoke
+        server: https://4449BC09C3F558AA193301BB5C9E4AE5.gr7.us-east-1.eks.amazonaws.com
         env: canary
   template:
     metadata:
@@ -19,7 +19,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/YOUR_REPO.git
+        repoURL: https://github.com/gorin-lab/fleet
         targetRevision: main
         path: apps/myapp/overlays/{{env}}
       destination:
@@ -29,3 +29,5 @@ spec:
         automated:
           prune: true
           selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
