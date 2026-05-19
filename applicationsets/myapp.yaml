@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-myapp
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - name: cluster-a
+        server: https://kubernetes.default.svc
+        env: prod
+      - name: cluster-b
+        server: https://REPLACE_ME.eks.amazonaws.com
+        env: canary
+  template:
+    metadata:
+      name: '{{name}}-myapp'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/YOUR_REPO.git
+        targetRevision: main
+        path: apps/myapp/overlays/{{env}}
+      destination:
+        server: '{{server}}'
+        namespace: myapp
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
