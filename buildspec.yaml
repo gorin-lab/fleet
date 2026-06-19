@@ -1,17 +1,48 @@
 version: 0.2
 
+env:
+  variables:
+    MANIFESTS_BRANCH: "argocd"
+    MANIFESTS_PATH: "app-manifests/deployment.yaml"
+    MANIFESTS_REPO_URL: "https://git-codecommit.us-east-1.amazonaws.com/v1/repos/commit"
+    # MANIFESTS_REPO_URL は CodeBuild の環境変数で設定してください
+    # 例: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/manifests-repo
+
 phases:
-  install:
-    runtime-versions:
-      python: 3.11
+  pre_build:
     commands:
-      - pip install -r requirements.txt
+      - COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+      - IMAGE_TAG="$COMMIT_HASH"
+      - echo "REPOSITORY_URI=$REPOSITORY_URI"
+      - echo "IMAGE_TAG=$IMAGE_TAG"
 
   build:
     commands:
-      - echo "Skip execution - only scanning"
+      - |-
 
-  post_build:
-    commands:
-      - echo "Done"
+        echo "Cloning manifests repo..."
+        git config --global credential.helper '!aws codecommit credential-helper $@'
+        git config --global credential.UseHttpPath true
 
+        rm -rf manifests-repo
+        git clone "$MANIFESTS_REPO_URL" manifests-repo
+        cd manifests-repo
+        git checkout "$MANIFESTS_BRANCH"
+
+        echo "Updating manifest image to digest..."
+        # image: <repo>:tag でも image: <repo>@sha256:... でも置換できるようにする
+        sed -i -e "s/:latest/:$IMAGE_TAG/g" "$MANIFESTS_PATH"
+        echo "--- updated file ---"
+        cat "$MANIFESTS_PATH"
+
+        echo "Committing and pushing..."
+        git config user.name "codebuild"
+        git config user.email "codebuild@amazonaws.com"
+
+        git add "$MANIFESTS_PATH"
+        git commit -m "deploy: ${IMAGE_REPO_NAME}@${DIGEST} (tag ${IMAGE_TAG})" || echo "No changes to commit"
+        git push origin "$MANIFESTS_BRANCH"
+
+artifacts:
+  files:
+    - '**/*'
