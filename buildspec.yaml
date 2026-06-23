@@ -32,7 +32,8 @@ phases:
         git config --global credential.UseHttpPath true
 
         rm -rf fleet
-        git clone "$MANIFESTS_REPO_URL" 
+        git clone "$MANIFESTS_REPO_URL"
+        git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/gorin-lab/fleet.git"
         cd fleet
         git checkout "$MANIFESTS_BRANCH"
 
