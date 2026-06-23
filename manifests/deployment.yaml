@@ -15,7 +15,7 @@ spec:
     spec:
       # serviceAccountName: sample-serviceaccount #コンテナがAWSサービスにアクセスする際に必要
       containers:
-      - image: 140083316867.dkr.ecr.us-east-1.amazonaws.com/flask:ea97542
+      - image: 140083316867.dkr.ecr.us-east-1.amazonaws.com/flask:d2590ea
         # env:
         # - name: SAMPLE
         #   value: sample
