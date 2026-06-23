@@ -3,8 +3,8 @@ version: 0.2
 env:
   variables:
     MANIFESTS_BRANCH: "argocd"
-    MANIFESTS_PATH: "app-manifests/deployment.yaml"
-    MANIFESTS_REPO_URL: "https://git-codecommit.us-east-1.amazonaws.com/v1/repos/commit"
+    MANIFESTS_PATH: "manifests/deployment.yaml"
+    MANIFESTS_REPO_URL: "https://github.com/gorin-lab/fleet.git"
     # MANIFESTS_REPO_URL は CodeBuild の環境変数で設定してください
     # 例: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/manifests-repo
 
@@ -31,7 +31,7 @@ phases:
 
         echo "Updating manifest image to digest..."
         # image: <repo>:tag でも image: <repo>@sha256:... でも置換できるようにする
-        sed -i -e "s/:latest/:$IMAGE_TAG/g" "$MANIFESTS_PATH"
+        sed -i -E "s|(image: .*/[^:@]+):[^@[:space:]]+|\\1:$IMAGE_TAG|g" "$MANIFESTS_PATH"
         echo "--- updated file ---"
         cat "$MANIFESTS_PATH"
 
