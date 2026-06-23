@@ -4,15 +4,21 @@ env:
   variables:
     MANIFESTS_BRANCH: "argocd"
     MANIFESTS_PATH: "manifests/deployment.yaml"
+
+    # ---- 接続先の切り替え ----------------------------------------
+    # GitHub (PAT) を使う場合: 以下の URL をそのまま使用し、
+    #   GITHUB_TOKEN を CodeBuild 環境変数（シークレット）で設定すること
     MANIFESTS_REPO_URL: "https://github.com/gorin-lab/fleet.git"
-    # MANIFESTS_REPO_URL は CodeBuild の環境変数で設定してください
-    # 例: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/manifests-repo
+    # CodeCommit を使う場合: 上をコメントアウトして下を有効化し、
+    #   CodeBuild IAM ロールに codecommit:GitPull/Push 権限を付与すること
+    # MANIFESTS_REPO_URL: "https://git-codecommit.us-east-1.amazonaws.com/v1/repos/fleet"
+    # ---------------------------------------------------------------
 
 phases:
   pre_build:
     commands:
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+      - REPOSITORY_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME"
       - COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
       - IMAGE_TAG="$COMMIT_HASH"
       - echo "REPOSITORY_URI=$REPOSITORY_URI"
@@ -22,24 +28,29 @@ phases:
     commands:
       - |-
         set -euo pipefail
-        echo Build started on `date`
-        echo Building the Docker image...
-        docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-        docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
-        docker push $REPOSITORY_URI:$IMAGE_TAG
-        echo "Cloning manifests repo..."
-        git config --global credential.helper '!aws codecommit credential-helper $@'
-        git config --global credential.UseHttpPath true
+        echo "Build started on $(date)"
 
+        echo "Building and pushing Docker image..."
+        docker build -t "$REPOSITORY_URI:$IMAGE_TAG" .
+        docker push "$REPOSITORY_URI:$IMAGE_TAG"
+
+        echo "Cloning manifests repo..."
         rm -rf fleet
-        # git clone "$MANIFESTS_REPO_URL"
+
+        # ---- GitHub (PAT) ---- (有効)
         git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/gorin-lab/fleet.git"
+
+        # ---- CodeCommit ---- (無効: 使う場合は上をコメントアウトして下 3 行を有効化)
+        # git config --global credential.helper '!aws codecommit credential-helper $@'
+        # git config --global credential.UseHttpPath true
+        # git clone "$MANIFESTS_REPO_URL"
+
         cd fleet
         git checkout "$MANIFESTS_BRANCH"
 
-        echo "Updating manifest image to digest..."
+        echo "Updating manifest image..."
         # image: <repo>:tag でも image: <repo>@sha256:... でも置換できるようにする
-        sed -i -E "s|(image: .*/[^:@]+):[^@[:space:]]+|\\1:$IMAGE_TAG|g" "$MANIFESTS_PATH"
+        sed -i -E "s|(image: .*/[^:@]+):[^@[:space:]]+|\1:$IMAGE_TAG|g" "$MANIFESTS_PATH"
         echo "--- updated file ---"
         cat "$MANIFESTS_PATH"
 
