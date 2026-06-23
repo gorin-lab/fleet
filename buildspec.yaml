@@ -48,7 +48,7 @@ phases:
         git config user.email "codebuild@amazonaws.com"
 
         git add "$MANIFESTS_PATH"
-        git commit -m "deploy: ${IMAGE_REPO_NAME}@${DIGEST} (tag ${IMAGE_TAG})" || echo "No changes to commit"
+        git commit -m "deploy: ${IMAGE_REPO_NAME}:${IMAGE_TAG}" || echo "No changes to commit"
         git push origin "$MANIFESTS_BRANCH"
 
 artifacts:
