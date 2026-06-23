@@ -11,6 +11,7 @@ env:
 phases:
   pre_build:
     commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       - COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
       - IMAGE_TAG="$COMMIT_HASH"
       - echo "REPOSITORY_URI=$REPOSITORY_URI"
@@ -19,14 +20,18 @@ phases:
   build:
     commands:
       - |-
-
+        echo Build started on `date`
+        echo Building the Docker image...
+        docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+        docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
+	docker push $REPOSITORY_URI:$IMAGE_TAG
         echo "Cloning manifests repo..."
         git config --global credential.helper '!aws codecommit credential-helper $@'
         git config --global credential.UseHttpPath true
 
-        rm -rf manifests-repo
-        git clone "$MANIFESTS_REPO_URL" manifests-repo
-        cd manifests-repo
+        rm -rf fleet
+        git clone "$MANIFESTS_REPO_URL" 
+        cd flet
         git checkout "$MANIFESTS_BRANCH"
 
         echo "Updating manifest image to digest..."
